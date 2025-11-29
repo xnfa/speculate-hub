@@ -11,12 +11,22 @@ import {
   Pause,
   CheckCircle,
   XCircle,
-  Edit,
   Loader2,
+  AlertCircle,
+  Sparkles,
+  DollarSign,
+  Calendar as CalendarIcon,
+  FileText,
+  Tag,
+  Link2,
 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,6 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useToast } from "@/components/ui/use-toast";
 import { adminApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
@@ -50,6 +61,44 @@ import {
   formatPercent,
   getMarketStatusText,
 } from "@/lib/utils";
+
+// 表单验证 Schema
+const createMarketSchema = z
+  .object({
+    title: z
+      .string()
+      .min(5, "标题至少需要 5 个字符")
+      .max(100, "标题不能超过 100 个字符"),
+    description: z
+      .string()
+      .min(10, "描述至少需要 10 个字符")
+      .max(500, "描述不能超过 500 个字符"),
+    category: z
+      .string()
+      .min(2, "分类至少需要 2 个字符")
+      .max(20, "分类不能超过 20 个字符"),
+    liquidity: z
+      .number()
+      .min(100, "初始流动性至少为 100")
+      .max(1000000, "初始流动性不能超过 1,000,000"),
+    startTime: z.date({
+      required_error: "请选择开始时间",
+    }),
+    endTime: z.date({
+      required_error: "请选择结束时间",
+    }),
+    resolutionSource: z.string().max(200, "来源说明不能超过 200 个字符").optional(),
+  })
+  .refine((data) => data.endTime > data.startTime, {
+    message: "结束时间必须晚于开始时间",
+    path: ["endTime"],
+  })
+  .refine((data) => data.startTime > new Date(), {
+    message: "开始时间必须晚于当前时间",
+    path: ["startTime"],
+  });
+
+type CreateMarketFormData = z.infer<typeof createMarketSchema>;
 
 interface Market {
   id: string;
@@ -67,6 +116,17 @@ interface Market {
   end_time: string;
 }
 
+// 预设分类
+const CATEGORIES = [
+  { value: "加密货币", label: "加密货币" },
+  { value: "政治", label: "政治" },
+  { value: "体育", label: "体育" },
+  { value: "科技", label: "科技" },
+  { value: "娱乐", label: "娱乐" },
+  { value: "经济", label: "经济" },
+  { value: "其他", label: "其他" },
+];
+
 export default function AdminMarketsPage() {
   const { token } = useAuthStore();
   const { toast } = useToast();
@@ -83,16 +143,29 @@ export default function AdminMarketsPage() {
   const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
   const [processing, setProcessing] = useState(false);
 
-  // Form data
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "",
-    liquidity: 1000,
-    startTime: "",
-    endTime: "",
-    resolutionSource: "",
+  // Form
+  const form = useForm<CreateMarketFormData>({
+    resolver: zodResolver(createMarketSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      liquidity: 1000,
+      resolutionSource: "",
+    },
   });
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = form;
+
+  const watchedStartTime = watch("startTime");
+  const watchedCategory = watch("category");
 
   useEffect(() => {
     loadMarkets();
@@ -116,18 +189,18 @@ export default function AdminMarketsPage() {
     }
   };
 
-  const handleCreateMarket = async () => {
+  const onSubmit = async (data: CreateMarketFormData) => {
     if (!token) return;
     setProcessing(true);
     try {
       await adminApi.createMarket(token, {
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        liquidity: formData.liquidity,
-        startTime: new Date(formData.startTime).toISOString(),
-        endTime: new Date(formData.endTime).toISOString(),
-        resolutionSource: formData.resolutionSource,
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        liquidity: data.liquidity,
+        startTime: data.startTime.toISOString(),
+        endTime: data.endTime.toISOString(),
+        resolutionSource: data.resolutionSource || "",
       });
       toast({
         title: "创建成功",
@@ -135,15 +208,7 @@ export default function AdminMarketsPage() {
         variant: "success",
       });
       setCreateOpen(false);
-      setFormData({
-        title: "",
-        description: "",
-        category: "",
-        liquidity: 1000,
-        startTime: "",
-        endTime: "",
-        resolutionSource: "",
-      });
+      reset();
       loadMarkets();
     } catch (error: any) {
       toast({
@@ -156,10 +221,7 @@ export default function AdminMarketsPage() {
     }
   };
 
-  const handleUpdateStatus = async (
-    marketId: string,
-    status: string
-  ) => {
+  const handleUpdateStatus = async (marketId: string, status: string) => {
     if (!token) return;
     try {
       await adminApi.updateMarketStatus(token, marketId, status);
@@ -224,6 +286,13 @@ export default function AdminMarketsPage() {
       market.title.toLowerCase().includes(search.toLowerCase()) ||
       market.category.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setCreateOpen(open);
+    if (!open) {
+      reset();
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -295,7 +364,9 @@ export default function AdminMarketsPage() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <Badge variant={getStatusBadgeVariant(market.status) as any}>
+                        <Badge
+                          variant={getStatusBadgeVariant(market.status) as any}
+                        >
                           {getMarketStatusText(market.status)}
                         </Badge>
                         <Badge variant="outline">{market.category}</Badge>
@@ -423,107 +494,232 @@ export default function AdminMarketsPage() {
       </Card>
 
       {/* Create Market Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>创建市场</DialogTitle>
-            <DialogDescription>创建新的预测市场</DialogDescription>
+      <Dialog open={createOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl">创建新市场</DialogTitle>
+                <DialogDescription className="mt-1">
+                  填写以下信息创建一个新的预测市场
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-            <div className="space-y-2">
-              <Label>标题</Label>
-              <Input
-                placeholder="市场标题"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>描述</Label>
-              <textarea
-                className="w-full h-24 px-3 py-2 rounded-lg border bg-background resize-none"
-                placeholder="市场描述..."
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>分类</Label>
-                <Input
-                  placeholder="例如: 加密货币"
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                />
+
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex flex-col flex-1 overflow-hidden"
+          >
+            <div className="flex-1 overflow-y-auto py-4 space-y-6 px-1">
+              {/* 基本信息 */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  基本信息
+                </h3>
+
+                <div className="space-y-2">
+                  <Label htmlFor="title">
+                    市场标题 <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="title"
+                    placeholder="例如：BTC 会在 2024 年底突破 10 万美元吗？"
+                    {...register("title")}
+                    className={errors.title ? "border-destructive" : ""}
+                  />
+                  {errors.title && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.title.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">
+                    市场描述 <span className="text-destructive">*</span>
+                  </Label>
+                  <Textarea
+                    id="description"
+                    placeholder="详细描述市场的判定条件和规则..."
+                    className={`min-h-[100px] ${errors.description ? "border-destructive" : ""}`}
+                    {...register("description")}
+                  />
+                  {errors.description && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.description.message}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>初始流动性</Label>
-                <Input
-                  type="number"
-                  value={formData.liquidity}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      liquidity: parseInt(e.target.value),
-                    })
-                  }
-                />
+
+              {/* 分类和流动性 */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Tag className="w-4 h-4" />
+                  分类与资金
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>
+                      分类 <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={watchedCategory}
+                      onValueChange={(value) => setValue("category", value)}
+                    >
+                      <SelectTrigger
+                        className={errors.category ? "border-destructive" : ""}
+                      >
+                        <SelectValue placeholder="选择分类" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.category && (
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {errors.category.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="liquidity">
+                      初始流动性 <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="liquidity"
+                        type="number"
+                        className={`pl-9 ${errors.liquidity ? "border-destructive" : ""}`}
+                        {...register("liquidity", { valueAsNumber: true })}
+                      />
+                    </div>
+                    {errors.liquidity && (
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {errors.liquidity.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 时间设置 */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4" />
+                  时间设置
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>
+                      开始时间 <span className="text-destructive">*</span>
+                    </Label>
+                    <DateTimePicker
+                      value={watchedStartTime}
+                      onChange={(date) => setValue("startTime", date as Date)}
+                      placeholder="选择开始时间"
+                      minDate={new Date()}
+                      error={!!errors.startTime}
+                    />
+                    {errors.startTime && (
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {errors.startTime.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>
+                      结束时间 <span className="text-destructive">*</span>
+                    </Label>
+                    <DateTimePicker
+                      value={watch("endTime")}
+                      onChange={(date) => setValue("endTime", date as Date)}
+                      placeholder="选择结束时间"
+                      minDate={watchedStartTime || new Date()}
+                      error={!!errors.endTime}
+                    />
+                    {errors.endTime && (
+                      <p className="text-sm text-destructive flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {errors.endTime.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 结果来源 */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Link2 className="w-4 h-4" />
+                  其他信息
+                </h3>
+
+                <div className="space-y-2">
+                  <Label htmlFor="resolutionSource">结果来源（可选）</Label>
+                  <Input
+                    id="resolutionSource"
+                    placeholder="例如：以 CoinGecko 官方数据为准"
+                    {...register("resolutionSource")}
+                    className={
+                      errors.resolutionSource ? "border-destructive" : ""
+                    }
+                  />
+                  {errors.resolutionSource && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {errors.resolutionSource.message}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    说明市场结果判定的数据来源，增加透明度
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>开始时间</Label>
-                <Input
-                  type="datetime-local"
-                  value={formData.startTime}
-                  onChange={(e) =>
-                    setFormData({ ...formData, startTime: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>结束时间</Label>
-                <Input
-                  type="datetime-local"
-                  value={formData.endTime}
-                  onChange={(e) =>
-                    setFormData({ ...formData, endTime: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>结果来源（可选）</Label>
-              <Input
-                placeholder="结果判定来源说明"
-                value={formData.resolutionSource}
-                onChange={(e) =>
-                  setFormData({ ...formData, resolutionSource: e.target.value })
-                }
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={handleCreateMarket} disabled={processing}>
-              {processing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  创建中...
-                </>
-              ) : (
-                "创建市场"
-              )}
-            </Button>
-          </DialogFooter>
+
+            <DialogFooter className="pt-4 border-t mt-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleDialogOpenChange(false)}
+              >
+                取消
+              </Button>
+              <Button type="submit" disabled={processing} className="min-w-[100px]">
+                {processing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    创建中...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    创建市场
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -577,4 +773,3 @@ export default function AdminMarketsPage() {
     </div>
   );
 }
-
