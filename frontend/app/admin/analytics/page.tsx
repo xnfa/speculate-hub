@@ -162,14 +162,16 @@ export default function AnalyticsPage() {
             </div>
             <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
               <div>
-                <span className="text-sm text-muted-foreground">手续费收入</span>
-                <p className="text-xl font-semibold text-emerald-400">
+                <span className="text-sm text-muted-foreground">
+                  手续费收入
+                </span>
+                <div className="text-xl font-semibold text-emerald-400">
                   {loading ? (
                     <LoadingSkeleton />
                   ) : (
                     formatCurrency(overview?.fees.totalFees || 0)
                   )}
-                </p>
+                </div>
               </div>
               <div>
                 <span className="text-sm text-muted-foreground">
@@ -488,7 +490,9 @@ export default function AnalyticsPage() {
                         </td>
                         <td
                           className={`py-3 px-4 text-right font-semibold ${
-                            market.pnl >= 0 ? "text-emerald-400" : "text-red-400"
+                            market.pnl >= 0
+                              ? "text-emerald-400"
+                              : "text-red-400"
                           }`}
                         >
                           <div className="flex items-center justify-end gap-1">
@@ -512,4 +516,3 @@ export default function AnalyticsPage() {
     </div>
   );
 }
-

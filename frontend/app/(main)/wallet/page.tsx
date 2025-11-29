@@ -177,16 +177,18 @@ export default function WalletPage() {
                   <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
                     <Wallet className="w-6 h-6 text-white" />
                   </div>
-                  <span className="text-lg text-muted-foreground">账户余额</span>
+                  <span className="text-lg text-muted-foreground">
+                    账户余额
+                  </span>
                 </div>
                 <div className="text-4xl font-bold mb-2">
                   {formatCurrency(wallet?.balance || 0)}
                 </div>
-                {wallet?.frozen_balance && wallet.frozen_balance > 0 && (
+                {wallet?.frozen_balance && wallet.frozen_balance > 0 ? (
                   <div className="text-sm text-muted-foreground">
                     冻结金额: {formatCurrency(wallet.frozen_balance)}
                   </div>
-                )}
+                ) : undefined}
               </div>
               <div className="flex gap-3">
                 <Button
@@ -229,7 +231,10 @@ export default function WalletPage() {
             {loading ? (
               <div className="space-y-4">
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-4 animate-pulse">
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 animate-pulse"
+                  >
                     <div className="w-10 h-10 bg-muted rounded-full" />
                     <div className="flex-1">
                       <div className="h-4 bg-muted rounded w-1/4 mb-2" />
@@ -406,4 +411,3 @@ export default function WalletPage() {
     </div>
   );
 }
-
