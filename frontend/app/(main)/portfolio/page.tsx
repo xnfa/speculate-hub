@@ -60,22 +60,59 @@ export default function PortfolioPage() {
   };
 
   const calculateCurrentPrice = (market: any, side: "yes" | "no") => {
+    // 已结算市场：获胜方价值1，失败方价值0
+    if (market.status === "resolved" && market.outcome) {
+      if (side === market.outcome) {
+        return 1; // 获胜方每份价值1元
+      } else {
+        return 0; // 失败方每份价值0元
+      }
+    }
+
+    // 未结算市场：使用 LMSR 价格公式
+    // 由于前端没有 liquidity 参数，使用简化的概率计算
     const total = market.yes_shares + market.no_shares;
     if (total === 0) return 0.5;
-    return side === "yes"
-      ? market.no_shares / total
-      : market.yes_shares / total;
+
+    // LMSR 价格近似计算（假设 b 较大时）
+    // P(yes) ≈ e^(q_yes/b) / (e^(q_yes/b) + e^(q_no/b))
+    // 简化为基于份额差的概率
+    const b = 1000; // 假设默认流动性
+    const expYes = Math.exp(market.yes_shares / b);
+    const expNo = Math.exp(market.no_shares / b);
+    const sum = expYes + expNo;
+
+    return side === "yes" ? expYes / sum : expNo / sum;
   };
 
   const calculatePnL = (position: Position) => {
-    if (!position.markets) return { pnl: 0, pnlPercent: 0 };
+    if (!position.markets) return { pnl: 0, pnlPercent: 0, totalValue: 0, isSettled: false };
 
-    const yesCurrentPrice = calculateCurrentPrice(position.markets, "yes");
-    const noCurrentPrice = calculateCurrentPrice(position.markets, "no");
+    const market = position.markets;
+    const isSettled = market.status === "resolved";
 
-    const yesValue = position.yes_shares * yesCurrentPrice;
-    const noValue = position.no_shares * noCurrentPrice;
+    // 计算当前价值
+    let yesValue = 0;
+    let noValue = 0;
 
+    if (isSettled && market.outcome) {
+      // 已结算：根据结果计算价值
+      if (market.outcome === "yes") {
+        yesValue = position.yes_shares * 1; // YES 赢了，每份值1元
+        noValue = position.no_shares * 0;   // NO 输了，每份值0元
+      } else {
+        yesValue = position.yes_shares * 0; // YES 输了，每份值0元
+        noValue = position.no_shares * 1;   // NO 赢了，每份值1元
+      }
+    } else {
+      // 未结算：按当前价格计算
+      const yesCurrentPrice = calculateCurrentPrice(market, "yes");
+      const noCurrentPrice = calculateCurrentPrice(market, "no");
+      yesValue = position.yes_shares * yesCurrentPrice;
+      noValue = position.no_shares * noCurrentPrice;
+    }
+
+    // 计算成本
     const yesCost = position.yes_shares * position.avg_yes_price;
     const noCost = position.no_shares * position.avg_no_price;
 
@@ -84,7 +121,7 @@ export default function PortfolioPage() {
     const pnl = totalValue - totalCost;
     const pnlPercent = totalCost > 0 ? pnl / totalCost : 0;
 
-    return { pnl, pnlPercent, totalValue };
+    return { pnl, pnlPercent, totalValue, isSettled };
   };
 
   const totalPortfolioValue = positions.reduce((sum, pos) => {
@@ -192,8 +229,15 @@ export default function PortfolioPage() {
       ) : (
         <div className="space-y-4">
           {activePositions.map((position, index) => {
-            const { pnl, pnlPercent, totalValue } = calculatePnL(position);
+            const { pnl, pnlPercent, totalValue, isSettled } = calculatePnL(position);
             const isProfitable = pnl >= 0;
+            const market = position.markets;
+
+            // 判断用户是否预测正确（对于已结算市场）
+            const hasWinningPosition = isSettled && market?.outcome && (
+              (market.outcome === "yes" && position.yes_shares > 0) ||
+              (market.outcome === "no" && position.no_shares > 0)
+            );
 
             return (
               <motion.div
@@ -210,32 +254,44 @@ export default function PortfolioPage() {
                           <div className="flex items-center gap-2 mb-2">
                             <Badge
                               variant={
-                                position.markets?.status === "active"
+                                market?.status === "active"
                                   ? "success"
+                                  : market?.status === "resolved"
+                                  ? "info"
                                   : "secondary"
                               }
                             >
-                              {getMarketStatusText(
-                                position.markets?.status || ""
-                              )}
+                              {getMarketStatusText(market?.status || "")}
                             </Badge>
+                            {isSettled && market?.outcome && (
+                              <Badge variant={hasWinningPosition ? "success" : "destructive"}>
+                                结果: {market.outcome === "yes" ? "是" : "否"}
+                                {hasWinningPosition ? " ✓" : " ✗"}
+                              </Badge>
+                            )}
                           </div>
                           <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
-                            {position.markets?.title}
+                            {market?.title}
                           </h3>
                           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                             {position.yes_shares > 0 && (
-                              <span className="flex items-center gap-1">
+                              <span className={`flex items-center gap-1 ${
+                                isSettled && market?.outcome === "yes" ? "text-green-400 font-medium" : ""
+                              }`}>
                                 <TrendingUp className="w-4 h-4 text-green-400" />
                                 是: {position.yes_shares.toFixed(2)} 份 @{" "}
                                 {formatPercent(position.avg_yes_price)}
+                                {isSettled && market?.outcome === "yes" && " → 获胜!"}
                               </span>
                             )}
                             {position.no_shares > 0 && (
-                              <span className="flex items-center gap-1">
+                              <span className={`flex items-center gap-1 ${
+                                isSettled && market?.outcome === "no" ? "text-green-400 font-medium" : ""
+                              }`}>
                                 <TrendingDown className="w-4 h-4 text-red-400" />
                                 否: {position.no_shares.toFixed(2)} 份 @{" "}
                                 {formatPercent(position.avg_no_price)}
+                                {isSettled && market?.outcome === "no" && " → 获胜!"}
                               </span>
                             )}
                           </div>
@@ -243,7 +299,7 @@ export default function PortfolioPage() {
                         <div className="flex items-center gap-6">
                           <div className="text-right">
                             <div className="text-sm text-muted-foreground mb-1">
-                              当前价值
+                              {isSettled ? "结算价值" : "当前价值"}
                             </div>
                             <div className="font-semibold">
                               {formatCurrency(totalValue || 0)}
