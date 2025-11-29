@@ -10,20 +10,20 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(255) UNIQUE NOT NULL,
   username VARCHAR(50) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Wallets table
 CREATE TABLE IF NOT EXISTS wallets (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  balance DECIMAL(20, 6) DEFAULT 0 CHECK (balance >= 0),
-  frozen_balance DECIMAL(20, 6) DEFAULT 0 CHECK (frozen_balance >= 0),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  balance DECIMAL(20, 6) NOT NULL DEFAULT 0 CHECK (balance >= 0),
+  frozen_balance DECIMAL(20, 6) NOT NULL DEFAULT 0 CHECK (frozen_balance >= 0),
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Wallet transactions table
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
   balance_after DECIMAL(20, 6) NOT NULL,
   description TEXT,
   reference_id UUID,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Markets table
@@ -47,18 +47,18 @@ CREATE TABLE IF NOT EXISTS markets (
   category VARCHAR(50) NOT NULL,
   image_url TEXT,
   resolution_source TEXT,
-  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'suspended', 'resolved', 'cancelled')),
+  status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'suspended', 'resolved', 'cancelled')),
   outcome VARCHAR(10) CHECK (outcome IN ('yes', 'no')),
-  yes_shares DECIMAL(20, 6) DEFAULT 1000,
-  no_shares DECIMAL(20, 6) DEFAULT 1000,
-  liquidity DECIMAL(20, 6) DEFAULT 1000,
-  volume DECIMAL(20, 6) DEFAULT 0,
+  yes_shares DECIMAL(20, 6) NOT NULL DEFAULT 1000,
+  no_shares DECIMAL(20, 6) NOT NULL DEFAULT 1000,
+  liquidity DECIMAL(20, 6) NOT NULL DEFAULT 1000,
+  volume DECIMAL(20, 6) NOT NULL DEFAULT 0,
   start_time TIMESTAMP WITH TIME ZONE NOT NULL,
   end_time TIMESTAMP WITH TIME ZONE NOT NULL,
   resolved_at TIMESTAMP WITH TIME ZONE,
   created_by UUID NOT NULL REFERENCES users(id),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Positions table
@@ -66,12 +66,12 @@ CREATE TABLE IF NOT EXISTS positions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   market_id UUID NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
-  yes_shares DECIMAL(20, 6) DEFAULT 0,
-  no_shares DECIMAL(20, 6) DEFAULT 0,
-  avg_yes_price DECIMAL(10, 6) DEFAULT 0,
-  avg_no_price DECIMAL(10, 6) DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  yes_shares DECIMAL(20, 6) NOT NULL DEFAULT 0,
+  no_shares DECIMAL(20, 6) NOT NULL DEFAULT 0,
+  avg_yes_price DECIMAL(10, 6) NOT NULL DEFAULT 0,
+  avg_no_price DECIMAL(10, 6) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, market_id)
 );
 
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS trades (
   no_shares_before DECIMAL(20, 6) NOT NULL,
   yes_shares_after DECIMAL(20, 6) NOT NULL,
   no_shares_after DECIMAL(20, 6) NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Indexes
