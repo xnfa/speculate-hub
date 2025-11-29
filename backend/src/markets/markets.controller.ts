@@ -78,12 +78,12 @@ export class MarketsController {
     }
 
     const state = {
-      yesShares: market.yes_shares,
-      noShares: market.no_shares,
+      yesShares: market.yes_shares ?? 0,
+      noShares: market.no_shares ?? 0,
     };
 
     const liquidityParam = this.ammService.getLiquidityForMarket(
-      market.liquidity
+      market.liquidity ?? 1000
     );
 
     if (dto.type === "buy") {

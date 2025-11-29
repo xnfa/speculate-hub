@@ -95,12 +95,12 @@ export class MarketsService {
     // 计算价格
     const marketsWithPrices = data?.map((market) => {
       const liquidityParam = this.ammService.getLiquidityForMarket(
-        market.liquidity
+        market.liquidity ?? 1000
       );
       const prices = this.ammService.getCurrentPrices(
         {
-          yesShares: market.yes_shares,
-          noShares: market.no_shares,
+          yesShares: market.yes_shares ?? 0,
+          noShares: market.no_shares ?? 0,
         },
         liquidityParam
       );
@@ -133,12 +133,12 @@ export class MarketsService {
     }
 
     const liquidityParam = this.ammService.getLiquidityForMarket(
-      market.liquidity
+      market.liquidity ?? 1000
     );
     const prices = this.ammService.getCurrentPrices(
       {
-        yesShares: market.yes_shares,
-        noShares: market.no_shares,
+        yesShares: market.yes_shares ?? 0,
+        noShares: market.no_shares ?? 0,
       },
       liquidityParam
     );
@@ -202,7 +202,7 @@ export class MarketsService {
       cancelled: [],
     };
 
-    if (!validTransitions[market.status]?.includes(status)) {
+    if (!validTransitions[market.status ?? "draft"]?.includes(status)) {
       throw new BadRequestException(
         `无法从 ${market.status} 状态转换到 ${status} 状态`
       );
@@ -270,7 +270,7 @@ export class MarketsService {
       .update({
         yes_shares: yesShares,
         no_shares: noShares,
-        volume: market.volume + volumeIncrease,
+        volume: (market.volume ?? 0) + volumeIncrease,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -313,7 +313,8 @@ export class MarketsService {
       .from("markets")
       .select("volume");
 
-    const totalVolume = volumeData?.reduce((sum, m) => sum + m.volume, 0) || 0;
+    const totalVolume =
+      volumeData?.reduce((sum, m) => sum + (m.volume ?? 0), 0) || 0;
 
     return {
       totalMarkets: totalMarkets || 0,
