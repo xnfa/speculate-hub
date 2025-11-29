@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -13,6 +13,7 @@ import {
   LogOut,
   Settings,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,17 +33,34 @@ export default function MainLayout({
 }) {
   const router = useRouter();
   const { user, wallet, isAuthenticated, isAdmin, logout } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  // 确保组件在客户端挂载后才进行认证检查，避免 hydration 不匹配
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
+    if (!mounted) return;
+
     if (!isAuthenticated()) {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [mounted, isAuthenticated, router]);
 
   const handleLogout = () => {
     logout();
     router.push("/login");
   };
+
+  // 在客户端挂载完成前显示加载状态
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated()) {
     return null;
@@ -155,4 +173,3 @@ export default function MainLayout({
     </div>
   );
 }
-

@@ -16,6 +16,7 @@ import {
   TrendingUp,
   ChevronLeft,
   DollarSign,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/store";
@@ -40,8 +41,16 @@ export default function AdminLayout({
   const { user, isAuthenticated, isAdmin, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // 确保组件在客户端挂载后才进行认证检查，避免 hydration 不匹配
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
+    if (!mounted) return;
+
     if (!isAuthenticated()) {
       router.push("/login");
       return;
@@ -49,12 +58,21 @@ export default function AdminLayout({
     if (!isAdmin()) {
       router.push("/markets");
     }
-  }, [isAuthenticated, isAdmin, router]);
+  }, [mounted, isAuthenticated, isAdmin, router]);
 
   const handleLogout = () => {
     logout();
     router.push("/login");
   };
+
+  // 在客户端挂载完成前显示加载状态
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated() || !isAdmin()) {
     return null;
@@ -172,4 +190,3 @@ export default function AdminLayout({
     </div>
   );
 }
-
