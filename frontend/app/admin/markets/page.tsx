@@ -71,8 +71,9 @@ const createMarketSchema = z
       .max(100, "标题不能超过 100 个字符"),
     description: z
       .string()
-      .min(10, "描述至少需要 10 个字符")
-      .max(500, "描述不能超过 500 个字符"),
+      .max(500, "描述不能超过 500 个字符")
+      .optional()
+      .or(z.literal("")),
     category: z
       .string()
       .min(2, "分类至少需要 2 个字符")
@@ -87,15 +88,14 @@ const createMarketSchema = z
     endTime: z.date({
       required_error: "请选择结束时间",
     }),
-    resolutionSource: z.string().max(200, "来源说明不能超过 200 个字符").optional(),
+    resolutionSource: z
+      .string()
+      .max(200, "来源说明不能超过 200 个字符")
+      .optional(),
   })
   .refine((data) => data.endTime > data.startTime, {
     message: "结束时间必须晚于开始时间",
     path: ["endTime"],
-  })
-  .refine((data) => data.startTime > new Date(), {
-    message: "开始时间必须晚于当前时间",
-    path: ["startTime"],
   });
 
 type CreateMarketFormData = z.infer<typeof createMarketSchema>;
@@ -541,13 +541,13 @@ export default function AdminMarketsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">
-                    市场描述 <span className="text-destructive">*</span>
-                  </Label>
+                  <Label htmlFor="description">市场描述</Label>
                   <Textarea
                     id="description"
                     placeholder="详细描述市场的判定条件和规则..."
-                    className={`min-h-[100px] ${errors.description ? "border-destructive" : ""}`}
+                    className={`min-h-[100px] ${
+                      errors.description ? "border-destructive" : ""
+                    }`}
                     {...register("description")}
                   />
                   {errors.description && (
@@ -605,7 +605,9 @@ export default function AdminMarketsPage() {
                       <Input
                         id="liquidity"
                         type="number"
-                        className={`pl-9 ${errors.liquidity ? "border-destructive" : ""}`}
+                        className={`pl-9 ${
+                          errors.liquidity ? "border-destructive" : ""
+                        }`}
                         {...register("liquidity", { valueAsNumber: true })}
                       />
                     </div>
@@ -635,7 +637,6 @@ export default function AdminMarketsPage() {
                       value={watchedStartTime}
                       onChange={(date) => setValue("startTime", date as Date)}
                       placeholder="选择开始时间"
-                      minDate={new Date()}
                       error={!!errors.startTime}
                     />
                     {errors.startTime && (
@@ -705,7 +706,11 @@ export default function AdminMarketsPage() {
               >
                 取消
               </Button>
-              <Button type="submit" disabled={processing} className="min-w-[100px]">
+              <Button
+                type="submit"
+                disabled={processing}
+                className="min-w-[100px]"
+              >
                 {processing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

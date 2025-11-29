@@ -86,7 +86,7 @@ function Calendar({
           defaultClassNames.outside
         ),
         disabled: cn(
-          "text-muted-foreground opacity-50",
+          "text-muted-foreground/60 [&>button]:text-muted-foreground/60 [&>button]:line-through",
           defaultClassNames.disabled
         ),
         hidden: cn("invisible", defaultClassNames.hidden),
