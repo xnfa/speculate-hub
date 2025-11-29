@@ -192,5 +192,33 @@ export class AdminController {
   ) {
     return this.tradesService.findByMarket(marketId, page, limit);
   }
+
+  // Analytics - 盈利分析
+  @Get('analytics/overview')
+  @ApiOperation({ summary: '获取盈利分析概览' })
+  async getAnalyticsOverview() {
+    return this.tradesService.getProfitAnalyticsOverview();
+  }
+
+  @Get('analytics/markets')
+  @ApiOperation({ summary: '获取已结算市场盈亏明细' })
+  async getMarketsPnL() {
+    return this.tradesService.getAMMProfitLoss();
+  }
+
+  @Get('analytics/exposure')
+  @ApiOperation({ summary: '获取未结算市场风险敞口' })
+  async getExposure() {
+    return this.tradesService.getUnsettledExposure();
+  }
+
+  @Get('analytics/top-contributors')
+  @ApiOperation({ summary: '获取用户手续费贡献排行' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getTopContributors(
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.tradesService.getTopContributors(limit);
+  }
 }
 

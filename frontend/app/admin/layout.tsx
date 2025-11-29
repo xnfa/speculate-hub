@@ -15,6 +15,7 @@ import {
   X,
   TrendingUp,
   ChevronLeft,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/store";
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/admin", label: "仪表盘", icon: LayoutDashboard },
+  { href: "/admin/analytics", label: "盈利分析", icon: DollarSign },
   { href: "/admin/users", label: "用户管理", icon: Users },
   { href: "/admin/wallets", label: "钱包管理", icon: Wallet },
   { href: "/admin/markets", label: "市场管理", icon: Target },
